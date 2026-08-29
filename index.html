@@ -1,0 +1,2226 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Family Tree · Dua Garis Orang Tua · Custom Warna Relasi</title>
+
+    <script src="assets/html2canvas.min.js"></script>
+    <script src="assets/jspdf.umd.min.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Inter', system-ui, sans-serif;
+            background: linear-gradient(145deg, #eef2f7 0%, #d9e2ec 100%);
+            min-height: 100vh;
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
+
+            body.dark-mode {
+                background: linear-gradient(145deg, #0f1a1f 0%, #0a1116 100%);
+                color: #eef4ff;
+            }
+
+                body.dark-mode .tree li a {
+                    background: #1e2f38;
+                    border-color: #4a7c8a;
+                    color: #f0f9ff;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                }
+
+                    body.dark-mode .tree li a:hover {
+                        background: #2c4d5a;
+                        border-color: #7eb6c4;
+                    }
+
+        .drag-container {
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            cursor: grab;
+            transition: cursor 0.1s;
+            position: relative;
+        }
+
+            .drag-container.dragging {
+                cursor: grabbing;
+            }
+
+            .drag-container::-webkit-scrollbar {
+                width: 10px;
+                height: 10px;
+            }
+
+            .drag-container::-webkit-scrollbar-track {
+                background: rgba(0,0,0,0.05);
+                border-radius: 10px;
+            }
+
+            .drag-container::-webkit-scrollbar-thumb {
+                background: rgba(44,125,160,0.5);
+                border-radius: 10px;
+            }
+
+        .tree li a {
+            border: 2px solid #bed0e0;
+            padding: 10px 22px;
+            text-decoration: none;
+            color: #1f4b6e;
+            background: white;
+            border-radius: 60px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            cursor: pointer;
+            min-width: 130px;
+            justify-content: center;
+            position: relative;
+            z-index: 5;
+        }
+
+            .tree li a .member-number {
+                background: #2c7da0;
+                color: white;
+                border-radius: 30px;
+                padding: 2px 8px;
+                font-size: 0.7rem;
+                font-weight: bold;
+                min-width: 28px;
+                text-align: center;
+            }
+
+        body.dark-mode .tree li a .member-number {
+            background: #4a8faa;
+        }
+
+        .tree {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            text-align: center;
+            min-width: max-content;
+            padding: 40px 60px;
+            transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+            transform-origin: center center;
+            position: relative;
+        }
+
+            .tree ul {
+                padding-top: 20px;
+                position: relative;
+                display: flex;
+                justify-content: center;
+                flex-wrap: wrap;
+                transition: all 0.3s ease;
+            }
+
+            .tree li {
+                float: left;
+                text-align: center;
+                list-style-type: none;
+                position: relative;
+                padding: 20px 8px 0 8px;
+                transition: all 0.3s;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+
+                .tree li.has-parent-line::before,
+                .tree li.has-parent-line::after {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    right: 50%;
+                    border-top: 2.5px solid #8aacc9;
+                    width: 50%;
+                    height: 20px;
+                    transition: border-color 0.3s ease;
+                }
+
+                .tree li.has-parent-line::after {
+                    right: auto;
+                    left: 50%;
+                    border-left: 2.5px solid #8aacc9;
+                }
+
+                .tree li:only-child.has-parent-line::after,
+                .tree li:only-child.has-parent-line::before {
+                    display: none;
+                }
+
+                .tree li:only-child {
+                    padding-top: 0;
+                }
+
+                .tree li:first-child.has-parent-line::before,
+                .tree li:last-child.has-parent-line::after {
+                    border: 0 none;
+                }
+
+                .tree li:last-child.has-parent-line::before {
+                    border-right: 2.5px solid #8aacc9;
+                    border-radius: 0 6px 0 0;
+                }
+
+                .tree li:first-child.has-parent-line::after {
+                    border-radius: 6px 0 0 0;
+                }
+
+            .tree ul ul::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 50%;
+                border-left: 2.5px solid #8aacc9;
+                width: 0;
+                height: 20px;
+                transition: border-color 0.3s ease;
+            }
+
+            .tree li:hover > a ~ *::before,
+            .tree li:hover > a::before,
+            .tree li:hover > a::after,
+            .tree li:hover > ul::before,
+            .tree li:hover::before,
+            .tree li:hover::after {
+                border-color: #e34234 !important;
+                filter: drop-shadow(0 0 3px #ff7b6e);
+            }
+
+            .tree li a:hover {
+                background: #ffe3db;
+                border-color: #e07a6e;
+                transform: translateY(-2px) scale(1.02);
+            }
+
+            .tree.highlight-active li a {
+                opacity: 0.25;
+                transform: scale(0.95);
+            }
+
+            .tree.highlight-active li.line-highlight::before,
+            .tree.highlight-active li.line-highlight::after,
+            .tree.highlight-active ul.line-highlight::before {
+                border-color: #e34234 !important;
+                filter: drop-shadow(0 0 6px #ff7b6e) !important;
+            }
+
+            .tree.highlight-active li.node-active > a {
+                opacity: 1 !important;
+                transform: scale(1.08) translateY(-4px);
+                border-color: #e34234 !important;
+                background: #ffe3db !important;
+                box-shadow: 0 0 20px rgba(227, 66, 52, 0.6) !important;
+            }
+
+        .action-buttons {
+            margin-top: 10px;
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            opacity: 0.9;
+        }
+
+        .tree li button {
+            padding: 5px 14px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            border: none;
+            background: #3182a0;
+            color: white;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+            .tree li button.delete {
+                background: #dc6b5a;
+            }
+
+            .tree li button:hover {
+                transform: scale(1.05);
+            }
+
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(16px);
+            border-radius: 60px;
+            padding: 12px 24px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+            z-index: 200;
+            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.15);
+            transition: all 0.3s ease;
+        }
+
+            .controls.hidden {
+                transform: translateY(120px);
+                opacity: 0;
+                pointer-events: none;
+            }
+
+            .controls button {
+                padding: 8px 18px;
+                border: none;
+                background: #236e8f;
+                color: white;
+                border-radius: 40px;
+                font-weight: 600;
+                cursor: pointer;
+            }
+
+                .controls button.relation-btn {
+                    background: #2e7d64;
+                }
+
+                .controls button.color-btn {
+                    background: #9b59b6;
+                }
+
+                .controls button.json-btn {
+                    background: #e67e22;
+                }
+
+        .toggle-controls-btn {
+            position: fixed;
+            top: 60px;
+            right: 20px;
+            background: #2c7da0;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+            z-index: 201;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 300;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(6px);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 32px;
+            border-radius: 48px;
+            width: 90%;
+            max-width: 520px;
+            animation: modalPop 0.3s ease;
+        }
+
+        body.dark-mode .modal-content {
+            background: #1e2f36;
+        }
+
+        @keyframes modalPop {
+            from {
+                opacity: 0;
+                transform: scale(0.95) translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+            .form-group label {
+                display: block;
+                margin-bottom: 10px;
+                font-weight: 600;
+            }
+
+            .form-group select, .form-group input {
+                width: 100%;
+                padding: 12px 18px;
+                border: 2px solid #e2e8f0;
+                border-radius: 40px;
+                font-size: 1rem;
+                background: transparent;
+                color: inherit;
+            }
+
+        .color-picker-modern {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+            .color-picker-modern input[type="color"] {
+                width: 70px;
+                height: 60px;
+                padding: 4px;
+                cursor: pointer;
+                border-radius: 30px;
+                border: 3px solid #e0e7ef;
+                background: white;
+            }
+
+            .color-picker-modern .preview-box {
+                width: 60px;
+                height: 60px;
+                border-radius: 30px;
+                border: 3px solid #e0e7ef;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+                transition: all 0.2s;
+            }
+
+                .color-picker-modern .preview-box.transparent {
+                    background: repeating-conic-gradient(#e0e0e0 0% 25%, white 0% 50%) 50% / 12px 12px;
+                    border-color: #aaa;
+                }
+
+            .color-picker-modern .transparent-option {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                background: #f0f4fa;
+                padding: 6px 16px 6px 12px;
+                border-radius: 40px;
+                cursor: pointer;
+                font-weight: 500;
+                border: 2px solid transparent;
+                transition: all 0.2s;
+            }
+
+                .color-picker-modern .transparent-option:hover {
+                    border-color: #9b59b6;
+                }
+
+                .color-picker-modern .transparent-option input[type="checkbox"] {
+                    width: 20px;
+                    height: 20px;
+                    accent-color: #9b59b6;
+                    cursor: pointer;
+                }
+
+            .color-picker-modern .hex-label {
+                font-family: monospace;
+                font-weight: 600;
+                background: #f0f4fa;
+                padding: 6px 16px;
+                border-radius: 40px;
+                font-size: 0.9rem;
+                color: #1f3a4b;
+            }
+
+        body.dark-mode .color-picker-modern .hex-label {
+            background: #2a444d;
+            color: #d0e4ed;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 28px;
+            flex-wrap: wrap;
+        }
+
+            .button-group button {
+                flex: 1;
+                padding: 12px;
+                border-radius: 40px;
+                font-weight: bold;
+                border: none;
+                cursor: pointer;
+                min-width: 100px;
+            }
+
+                .button-group button.primary {
+                    background: #2c7da0;
+                    color: white;
+                }
+
+                .button-group button.secondary {
+                    background: #e2e8f0;
+                    color: #1f3a4b;
+                }
+
+                .button-group button.danger {
+                    background: #dc6b5a;
+                    color: white;
+                }
+
+        .relation-list {
+            max-height: 260px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 24px;
+            padding: 8px;
+        }
+
+        .relation-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8fafc;
+            margin: 8px 0;
+            padding: 10px 16px;
+            border-radius: 40px;
+        }
+
+        body.dark-mode .relation-item {
+            background: #2a444d;
+        }
+
+        .relation-item button {
+            background: #dc6b5a;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 30px;
+            color: white;
+            cursor: pointer;
+        }
+
+        .fab-add {
+            position: fixed;
+            bottom: 100px;
+            right: 30px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: #2c7da0;
+            color: white;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            z-index: 150;
+            box-shadow: 0 4px 16px rgba(44,125,160,0.4);
+        }
+
+        .toggle-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 200;
+            background: rgba(255,255,255,0.9);
+            backdrop-filter: blur(8px);
+            padding: 8px 16px;
+            border-radius: 40px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        body.dark-mode .toggle-container {
+            background: rgba(30,47,54,0.9);
+            color: #eef4ff;
+        }
+
+        .relation-svg-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 20;
+        }
+
+            .relation-svg-layer svg {
+                width: 100%;
+                height: 100%;
+                display: block;
+            }
+
+        .tree-container-relative {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .relation-line {
+            stroke-width: 3.5;
+            filter: drop-shadow(0 2px 3px rgba(0,0,0,0.1));
+            stroke-linecap: round;
+        }
+
+        .info-text {
+            font-size: 0.85rem;
+            background: #eef2f5;
+            padding: 10px 16px;
+            border-radius: 20px;
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+
+        body.dark-mode .info-text {
+            background: #1e2f38;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+            .modal-header .close {
+                background: none;
+                border: none;
+                font-size: 2rem;
+                line-height: 1;
+                cursor: pointer;
+                color: #888;
+                transition: color 0.2s;
+                padding: 0 8px;
+            }
+
+                .modal-header .close:hover {
+                    color: #222;
+                }
+
+        body.dark-mode .modal-header .close {
+            color: #aaa;
+        }
+
+            body.dark-mode .modal-header .close:hover {
+                color: #fff;
+            }
+
+        .empty-state {
+            padding: 40px;
+            text-align: center;
+        }
+
+            .empty-state button {
+                margin-top: 16px;
+                padding: 12px 28px;
+                border: none;
+                background: #2c7da0;
+                color: white;
+                border-radius: 40px;
+                font-weight: 600;
+                cursor: pointer;
+            }
+
+        .json-textarea {
+            width: 100%;
+            min-height: 200px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            padding: 12px;
+            border-radius: 16px;
+            border: 2px solid #e2e8f0;
+            background: #f8fafc;
+            resize: vertical;
+        }
+
+        body.dark-mode .json-textarea {
+            background: #1a2a30;
+            border-color: #3a5a66;
+            color: #d0e4ed;
+        }
+
+        .json-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin: 12px 0;
+        }
+
+            .json-actions button {
+                padding: 8px 16px;
+                border: none;
+                border-radius: 30px;
+                font-weight: 600;
+                cursor: pointer;
+            }
+
+            .json-actions .btn-export {
+                background: #2c7da0;
+                color: white;
+            }
+
+            .json-actions .btn-import {
+                background: #e67e22;
+                color: white;
+            }
+
+            .json-actions .btn-copy {
+                background: #2e7d64;
+                color: white;
+            }
+
+            .json-actions .btn-clear {
+                background: #dc6b5a;
+                color: white;
+            }
+
+        .json-status {
+            font-size: 0.85rem;
+            margin-top: 8px;
+            padding: 6px 12px;
+            border-radius: 20px;
+        }
+
+            .json-status.success {
+                background: #d4edda;
+                color: #155724;
+            }
+
+            .json-status.error {
+                background: #f8d7da;
+                color: #721c24;
+            }
+
+        body.dark-mode .json-status.success {
+            background: #1a4a2a;
+            color: #8fd9a8;
+        }
+
+        body.dark-mode .json-status.error {
+            background: #4a1a1a;
+            color: #f8a8a8;
+        }
+
+        .print-frame-overlay {
+            display: none;
+            position: absolute;
+            border: 4px dashed #dc6b5a;
+            background: rgba(220, 107, 90, 0.04);
+            pointer-events: none;
+            z-index: 99;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.4);
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+            .print-frame-overlay img {
+                width: 100%;
+                height: 100%;
+                object-fit: fill;
+                pointer-events: none;
+            }
+
+        .print-frame-title {
+            position: absolute;
+            top: -30px;
+            left: 0;
+            background: #dc6b5a;
+            color: white;
+            padding: 2px 10px;
+            font-size: 11px;
+            font-weight: bold;
+            border-radius: 4px;
+        }
+
+        #printConfigHeader {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(35, 110, 143, 0.96);
+            color: white;
+            z-index: 1000;
+            padding: 16px 12px;
+            text-align: center;
+            font-weight: 500;
+            box-shadow: 0 -4px 15px rgba(0,0,0,0.3);
+        }
+
+            #printConfigHeader input[type="range"] {
+                vertical-align: middle;
+                margin: 0 10px;
+            }
+
+        .print-control-group {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin: 0 10px;
+            background: rgba(255,255,255,0.1);
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+
+            .print-control-group select {
+                padding: 3px 8px;
+                border-radius: 10px;
+                border: none;
+                background: white;
+                color: #236e8f;
+                font-weight: 600;
+                outline: none;
+            }
+
+            .print-control-group input[type="file"] {
+                display: none;
+            }
+
+            .print-control-group label {
+                background: #e67e22;
+                color: white;
+                padding: 3px 10px;
+                border-radius: 10px;
+                cursor: pointer;
+                font-size: 12px;
+                font-weight: bold;
+                transition: background 0.2s;
+            }
+
+                .print-control-group label:hover {
+                    background: #d35400;
+                }
+
+        @media print {
+            body {
+                background: white !important;
+                color: black !important;
+                position: static !important;
+                overflow: visible !important;
+                height: auto !important;
+                width: auto !important;
+            }
+
+            .controls, .toggle-container, .toggle-controls-btn, .fab-add, .action-buttons, #printConfigHeader {
+                display: none !important;
+            }
+
+            .print-frame-overlay {
+                display: block !important;
+                border: none !important;
+                box-shadow: none !important;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .print-frame-title {
+                display: none !important;
+            }
+
+            .drag-container {
+                overflow: visible !important;
+                width: 100% !important;
+                height: auto !important;
+                position: static !important;
+            }
+
+            .tree {
+                padding: 0 !important;
+                transform: scale(1) !important;
+            }
+
+                .tree li a {
+                    background: white !important;
+                    border-color: #333 !important;
+                    color: #000 !important;
+                    box-shadow: none !important;
+                }
+        }
+
+        body.yusuf-active {
+            background: linear-gradient(to bottom, #d8f3dc, #b7e4c7);
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2;
+            text-align: center;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #2d6a4f;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+        }
+
+        /* CANVAS DAUN REALISTIS */
+        .yusuf-leaf-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+            opacity: 0;
+            transition: opacity 0.6s ease;
+        }
+
+            .yusuf-leaf-canvas.active {
+                opacity: 1;
+            }
+
+        /* =======================================
+           FOOTER DI ATAS (HEADER) STYLING
+           ======================================= */
+        .yusuf-footer {
+            background-color: #1b4332;
+            padding: 15px 0; /* Diperkecil agar tidak terlalu tinggi */
+            width: 100%;
+            position: relative;
+            z-index: 10;
+            order: -1; /* Memaksa flexbox menaruh ini di paling atas */
+        }
+
+        .yusuf-battle-arena {
+            position: absolute;
+            top: 100%; /* Diletakkan tepat di bawah kotak hijau tua */
+            left: 0;
+            width: 100%;
+            height: 75px; /* Ketinggian pas untuk stickman */
+            pointer-events: none;
+            border-bottom: 4px solid #52b788; /* Garis pijakan stickman pindah ke bawah */
+            box-shadow: 0 4px 20px rgba(82, 183, 136, 0.3);
+        }
+
+        .yusuf-stickman-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .yusuf-footer-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            text-align: center;
+            position: relative;
+            z-index: 12;
+        }
+
+        .yusuf-copyright-text {
+            color: #b7e4c7;
+            font-size: 1rem;
+            letter-spacing: 1px;
+        }
+
+        .yusuf-trigger {
+            color: #52b788;
+            text-decoration: none;
+            font-weight: bold;
+            transition: color 0.4s ease, text-shadow 0.4s ease;
+            display: inline-block;
+        }
+
+            .yusuf-trigger:hover {
+                color: #d8f3dc;
+                text-shadow: 0 0 15px #52b788;
+            }
+
+        /* --- CLASS CUSTOM --- */
+        .root_nama {
+            position: fixed;
+            bottom: 11rem;
+            right: 2rem;
+            display: inline-block;
+            z-index: 1000;
+        }
+
+        .clas_yusuf {
+            background-color: #1e3a8a;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: 'Poppins', sans-serif;
+            position: relative;
+            z-index: 1010;
+            transition: background 0.2s, transform 0.1s;
+            box-shadow: 0 4px 15px rgba(30, 58, 138, 0.4);
+        }
+
+            .clas_yusuf:active {
+                transform: scale(0.95);
+            }
+
+        .btn_reload {
+            background-color: #4b5563; /* Warna abu-abu gelap */
+            box-shadow: 0 4px 15px rgba(75, 85, 99, 0.4);
+        }
+
+        /* --- CONTAINER HUJAN UANG FULL SCREEN --- */
+        #moneyRainContainer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 999;
+            overflow: hidden;
+            display: none;
+        }
+
+        .money-item {
+            position: absolute;
+            top: -50px;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .bill-animation {
+            animation: fallAndWave 3.5s ease-in-out infinite;
+        }
+
+        .coin-animation {
+            animation: fallAndSpinCoin 2.8s linear infinite;
+        }
+
+        @keyframes fallAndWave {
+            0% {
+                transform: translateY(0) translateX(0) rotate(0deg);
+                opacity: 1;
+            }
+
+            25% {
+                transform: translateY(25vh) translateX(25px) rotate(12deg);
+            }
+
+            50% {
+                transform: translateY(50vh) translateX(-25px) rotate(-12deg);
+            }
+
+            75% {
+                transform: translateY(75vh) translateX(15px) rotate(8deg);
+            }
+
+            100% {
+                transform: translateY(105vh) translateX(-5px) rotate(0deg);
+                opacity: 0.3;
+            }
+        }
+
+        @keyframes fallAndSpinCoin {
+            0% {
+                transform: translateY(0) rotateY(0deg);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(105vh) rotateY(540deg);
+                opacity: 0.4;
+            }
+        }
+
+        /* --- SCENE UTAMA (Awan, Matahari, Canvas) --- */
+        #skyScene {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 996;
+            display: none;
+        }
+
+        .fancy-cloud {
+            position: absolute;
+            top: 2.5rem;
+            left: 2.5rem;
+            width: 160px;
+            height: 55px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 50px;
+            filter: drop-shadow(0 8px 15px rgba(0,0,0,0.1));
+            animation: floatCloud 4s ease-in-out infinite alternate;
+            z-index: 998;
+        }
+
+            .fancy-cloud::before, .fancy-cloud::after {
+                content: '';
+                position: absolute;
+                background: inherit;
+                border-radius: 50%;
+            }
+
+            .fancy-cloud::before {
+                width: 75px;
+                height: 75px;
+                top: -38px;
+                left: 25px;
+            }
+
+            .fancy-cloud::after {
+                width: 95px;
+                height: 95px;
+                top: -55px;
+                left: 55px;
+            }
+
+        .bright-sun {
+            position: absolute;
+            top: 1.5rem;
+            left: 4.5rem;
+            width: 85px;
+            height: 85px;
+            background: radial-gradient(circle, #fff385 0%, #f6e05e 100%);
+            border-radius: 50%;
+            box-shadow: 0 0 50px rgba(246, 224, 94, 0.7);
+            z-index: 997;
+            animation: sunPulse 3s ease-in-out infinite;
+        }
+
+        @keyframes floatCloud {
+            0% {
+                transform: translateY(0);
+            }
+
+            100% {
+                transform: translateY(-8px);
+            }
+        }
+
+        @keyframes sunPulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 0.85;
+            }
+
+            50% {
+                transform: scale(1.06);
+                opacity: 1;
+                box-shadow: 0 0 65px rgba(246, 224, 94, 0.9);
+            }
+        }
+
+        #rainbowCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 996;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <footer class="yusuf-footer">
+        <div class="yusuf-battle-arena">
+            <canvas id="stickman-canvas" class="yusuf-stickman-canvas"></canvas>
+        </div>
+
+        <div class="yusuf-footer-container">
+            <p class="yusuf-copyright-text">
+                &copy; 2026
+                <a href="https://github.com/Yusuf-Ibrahim-Malik-Dev" target="_blank" rel="noopener noreferrer" class="yusuf-trigger">
+                    Yusuf Ibrahim Malik Dev
+                </a>.
+                All Rights Reserved.
+            </p>
+        </div>
+    </footer>
+
+    <div class="main-content">
+    </div>
+
+    <canvas id="leaf-canvas" class="yusuf-leaf-canvas"></canvas>
+
+    <div id="printConfigHeader">
+        ⚙️ Mode Penyesuaian Area Potong |
+        L: <input type="range" id="fWidth" min="400" max="2500" value="1100" oninput="resizePrintFrame()"> px |
+        T: <input type="range" id="fHeight" min="300" max="1800" value="650" oninput="resizePrintFrame()"> px |
+
+        <div class="print-control-group">
+            📄 Format:
+            <select id="downloadFormatSelect">
+                <option value="png">PNG</option>
+                <option value="jpg">JPG</option>
+                <option value="jpeg">JPEG</option>
+                <option value="pdf">PDF</option>
+                <option value="svg">SVG</option>
+                <option value="doc">DOC</option>
+                <option value="docx">DOCX</option>
+            </select>
+
+            🖼️ Bingkai:
+            <select id="frameTemplateSelect" onchange="changeFrameTemplate()">
+                <option value="none">Tanpa Bingkai</option>
+                <option value="default-border">Garis Minimalis</option>
+            </select>
+            <label for="uploadFrameInput">➕ Upload (.jpg/.png)</label>
+            <input type="file" id="uploadFrameInput" accept="image/jpeg, image/png" onchange="handleFrameUpload(event)">
+        </div>
+
+        <button onclick="executeAreaDownload()" style="margin-left:10px; padding:5px 18px; background:#2e7d64; color:white; border:none; border-radius:20px; cursor:pointer; font-weight:bold;">📥 Download</button>
+        <button onclick="closePrintMode()" style="margin-left:8px; padding:5px 15px; background:#dc6b5a; color:white; border:none; border-radius:20px; cursor:pointer; font-weight:bold;">Batal</button>
+    </div>
+
+    <div class="drag-container" id="dragContainer">
+        <div class="tree-container-relative" id="treeRelativeContainer">
+            <div class="print-frame-overlay" id="printFrameElement">
+                <div class="print-frame-title" id="printFrameTitle">Area Potongan Kertas Cetak</div>
+            </div>
+
+            <div class="tree" id="familyTree"></div>
+            <div class="relation-svg-layer" id="relationSvgLayer"></div>
+        </div>
+    </div>
+
+    <div class="toggle-container">
+        <span>🎯 Tombol Aksi</span>
+        <label><input type="checkbox" id="showButtonsCheckbox" checked onchange="toggleActionButtons()"></label>
+    </div>
+
+    <button class="toggle-controls-btn" id="toggleControlsBtn" onclick="toggleFloatingControls()">🎮 Sembunyikan Kontrol</button>
+
+    <div class="controls" id="floatingControls">
+        <button onclick="zoomIn()">🔍 Zoom In</button>
+        <button onclick="zoomOut()">🔍 Zoom Out</button>
+        <button onclick="resetZoom()">⟳ Reset</button>
+        <button onclick="openPrintFramingMode()" style="background:#2e7d64;">🖨️ Cetak & Ekspor</button>
+        <button onclick="toggleDarkMode()">🌓 Dark Mode</button>
+        <button class="relation-btn" onclick="openRelationModal()">🔗 Tambah Relasi</button>
+        <button class="relation-btn" onclick="openDeleteRelationModal()" style="background:#9e5e3a;">🗑️ Hapus Relasi</button>
+        <button class="color-btn" onclick="openColorModal()">🎨 Warna Garis</button>
+        <button class="json-btn" onclick="openJsonModal()">💾 JSON</button>
+    </div>
+
+    <button class="fab-add" onclick="openAddMemberModal()">+</button>
+
+    <div id="addMemberModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2>➕ Tambah Anggota</h2><button class="close" onclick="closeAddMemberModal()">&times;</button></div>
+            <div class="modal-body">
+                <div class="form-group"><label>📝 Nama Lengkap</label><input type="text" id="modalNameInput" placeholder="Nama"></div>
+                <div class="form-group"><label>⚧ Jenis Kelamin</label><select id="modalGenderSelect"><option value="male">👨 Laki-laki</option><option value="female">👩 Perempuan</option></select></div>
+                <div class="form-group"><label>👨 Pilih AYAH (opsional)</label><select id="modalFatherSelect"><option value="">-- Tidak pilih (akar bebas) --</option></select></div>
+                <div class="form-group"><label>👩 Pilih IBU (opsional)</label><select id="modalMotherSelect"><option value="">-- Tidak pilih (akar bebas) --</option></select></div>
+                <div class="info-text">✨ <strong>Tanpa memilih Ayah & Ibu</strong> = anggota berdiri sendiri <strong>tanpa garis penghubung</strong> (akar terpisah). Pilih salah satu atau kedua orang tua untuk menyambung ke pohon.</div>
+                <div class="button-group"><button class="primary" onclick="addMemberWithParents()">➕ Tambah</button><button class="secondary" onclick="closeAddMemberModal()">Batal</button></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="relationModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2>🔗 Relasi</h2><button class="close" onclick="closeRelationModal()">&times;</button></div>
+            <div class="modal-body">
+                <div class="form-group"><label>Anggota 1</label><select id="relationMember1Select"></select></div>
+                <div class="form-group"><label>Anggota 2</label><select id="relationMember2Select"></select></div>
+                <div class="form-group"><label>Label (opsional)</label><input type="text" id="relationLabelInput" placeholder="Saudara, Pasangan, dll"></div>
+                <div class="form-group"><label>↪️ Tekukan Kelengkungan Garis (-150 s/d 150)</label><input type="range" id="relationCurvatureInput" min="-150" max="150" value="40"></div>
+                <div class="button-group"><button class="primary" onclick="saveRelation()">Simpan</button><button class="secondary" onclick="closeRelationModal()">Batal</button></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="deleteRelationModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2>🗑️ Hapus Relasi</h2><button class="close" onclick="closeDeleteRelationModal()">&times;</button></div>
+            <div class="modal-body"><div id="relationListContainer" class="relation-list"></div><div class="button-group"><button class="secondary" onclick="closeDeleteRelationModal()">Tutup</button></div></div>
+        </div>
+    </div>
+
+    <div id="editModal" class="modal"><div class="modal-content"><div class="modal-header"><h2>✏️ Edit</h2><button class="close" onclick="closeEditModal()">&times;</button></div><div class="modal-body"><div class="form-group"><label>Nama Baru</label><input type="text" id="editNameInput"></div><div class="form-group"><label>Gender</label><select id="editGenderSelect"><option value="male">Laki</option><option value="female">Perempuan</option></select></div><div class="button-group"><button class="primary" onclick="saveEdit()">Simpan</button><button class="secondary" onclick="closeEditModal()">Batal</button></div></div></div></div>
+
+    <div id="colorModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2>🎨 Ubah Warna Garis Relasi</h2><button class="close" onclick="closeColorModal()">&times;</button></div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>🌈 Pilih Warna Garis Relasi (Custom & Ibu)</label>
+                    <div class="color-picker-modern">
+                        <input type="color" id="relationColorPicker" value="#2e7d64">
+                        <div class="preview-box" id="colorPreviewBox" style="background:#2e7d64;"></div>
+                        <label class="transparent-option" id="transparentLabel">
+                            <input type="checkbox" id="transparentCheckbox">
+                            <span>🌀 Transparan</span>
+                        </label>
+                        <span class="hex-label" id="hexColorLabel">#2e7d64</span>
+                    </div>
+                    <div class="info-text" style="margin-top: 16px;">
+                        💡 Warna ini akan digunakan untuk:<br>
+                        • Garis hubungan antar anggota (custom relasi)<br>
+                        • Garis penghubung Ibu (jika ayah & ibu terdaftar)<br>
+                        • Teks label relasi (ikon ibu & label custom)
+                    </div>
+                </div>
+                <div class="button-group">
+                    <button class="primary" onclick="applyRelationColor()">✨ Terapkan</button>
+                    <button class="secondary" onclick="resetRelationColor()">⟳ Reset</button>
+                    <button class="secondary" onclick="closeColorModal()">Tutup</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="jsonModal" class="modal">
+        <div class="modal-content" style="max-width: 650px;">
+            <div class="modal-header"><h2>💾 Data JSON</h2><button class="close" onclick="closeJsonModal()">&times;</button></div>
+            <div class="modal-body">
+                <div class="info-text">
+                    📦 Simpan data keluarga sebagai JSON. Data akan otomatis tersimpan di browser Anda (localStorage).
+                </div>
+                <div class="json-actions">
+                    <button class="btn-export" onclick="exportJson()">📤 Ekspor & Simpan</button>
+                    <button class="btn-import" onclick="importJson()">📥 Impor dari Text</button>
+                    <button class="btn-copy" onclick="copyJson()">📋 Salin</button>
+                    <button class="btn-clear" onclick="clearAllData()">🗑️ Hapus Semua Data</button>
+                </div>
+                <textarea class="json-textarea" id="jsonTextArea" placeholder="Data JSON akan muncul di sini..."></textarea>
+                <div id="jsonStatus" class="json-status" style="display:none;"></div>
+                <div class="button-group" style="margin-top:12px;">
+                    <button class="secondary" onclick="closeJsonModal()">Tutup</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <div id="skyScene">
+        <div class="bright-sun"></div>
+        <div class="fancy-cloud"></div>
+        <canvas id="rainbowCanvas"></canvas>
+    </div>
+
+    <div id="moneyRainContainer"></div>
+
+    <div class="root_nama">
+        <button id="reloadPageBtn" class="clas_yusuf btn_reload">
+            🔄 Reload Page
+        </button>
+        <button id="openDonateBtn" class="clas_yusuf">
+            ❤️ Donate Center
+        </button>
+    </div>
+
+    <div id="donateModal" style="display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); justify-content: center; align-items: center;">
+        <div style="background-color: white; color: #333; padding: 2rem; border-radius: 1rem; max-width: 450px; width: 90%; text-align: center; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+            <span id="closeDonateBtn" style="position: absolute; right: 1.5rem; top: 1rem; font-size: 1.8rem; cursor: pointer; color: #a1a1aa;">&times;</span>
+            <h3 style="margin-top: 0; color: #1e3a8a; font-weight: 700;">Terima Kasih Banyak</h3>
+            <p style="font-style: italic; color: #4b5563; font-size: 1rem; line-height: 1.6;">
+                "Kehadiran Anda adalah energi bagi kami untuk terus berkarya. Terima kasih telah menggunakan aplikasi ini, dan ketulusan hati Anda melalui donasi ini sangat berarti dalam membantu kami menjaga aplikasi ini tetap hidup dan berkembang."
+            </p>
+            <hr style="border: 0; border-top: 2px solid #e5e7eb; margin: 2rem 0;">
+            <p style="font-weight: bold; margin-bottom: 0.75rem; color: #1f2937; font-size: 1.1rem;">Scan Barcode Paypal untuk Berdonasi</p>
+            <div style="background-color: #f3f4f6; padding: 1.5rem; border-radius: 1rem; display: inline-block;">
+                <img src="assets/img/qris-paypal.png" alt="QRIS Yusuf Ibrahim Malik Dev" style=" height: 350px; object-fit: contain; display: block; margin: 0 auto;">
+            </div>
+            <p style="margin-top: 1rem; font-size: 1rem; color: #374151;">Atas Nama: <br><strong style="font-size: 1.25rem; color: #111827;">Yusuf Ibrahim Malik Dev</strong></p>
+        </div>
+    </div>
+
+
+    <script>
+        let people = [];
+        let nextId = 1;
+        let nextMemberNumber = 1;
+        let relations = [];
+        let showButtons = true;
+        let currentZoom = 1;
+        let controlsVisible = true;
+        let pendingEditId = null;
+
+        let relationLineColor = "#2e7d64";
+        let isTransparent = false;
+        let uploadedFrames = {};
+
+        const STORAGE_KEY = 'family_tree_data';
+
+        function saveDataToStorage() {
+            const data = { people, relations, nextId, nextMemberNumber, relationLineColor, isTransparent };
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (e) { console.warn(e); }
+        }
+
+        function loadDataFromStorage() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (!raw) return false;
+                const data = JSON.parse(raw);
+                if (!data.people || !Array.isArray(data.people)) return false;
+                people = data.people;
+                relations = data.relations || [];
+                nextId = data.nextId || 1;
+                nextMemberNumber = data.nextMemberNumber || 1;
+                relationLineColor = data.relationLineColor || "#2e7d64";
+                isTransparent = data.isTransparent || false;
+                return true;
+            } catch (e) { return false; }
+        }
+
+        function clearAllData() {
+            if (!confirm('⚠️ Hapus SEMUA data?')) return;
+            localStorage.removeItem(STORAGE_KEY);
+            people = []; relations = []; nextId = 1; nextMemberNumber = 1; relationLineColor = "#2e7d64"; isTransparent = false;
+            renderTree(); closeJsonModal();
+        }
+
+        function openJsonModal() {
+            const data = { people, relations, nextId, nextMemberNumber, relationLineColor, isTransparent };
+            document.getElementById('jsonTextArea').value = JSON.stringify(data, null, 2);
+            document.getElementById('jsonModal').style.display = 'flex';
+        }
+        function closeJsonModal() { document.getElementById('jsonModal').style.display = 'none'; }
+
+        function exportJson() {
+            const data = { people, relations, nextId, nextMemberNumber, relationLineColor, isTransparent };
+            const json = JSON.stringify(data, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = `family_tree.json`; a.click();
+        }
+
+        function importJson() {
+            try {
+                const data = JSON.parse(document.getElementById('jsonTextArea').value);
+                people = data.people; relations = data.relations || []; nextId = data.nextId || 1;
+                saveDataToStorage(); renderTree(); closeJsonModal();
+            } catch (e) { alert('JSON tidak valid'); }
+        }
+
+        function copyJson() {
+            navigator.clipboard.writeText(document.getElementById('jsonTextArea').value);
+        }
+
+        function createPerson(name, gender, fatherId = null, motherId = null) {
+            return { id: nextId++, name, gender, fatherId, motherId, childrenIds: [], memberNumber: nextMemberNumber++ };
+        }
+        function getPersonById(id) { return people.find(p => p.id === id); }
+        function renumberAllMembers() { let counter = 1; people.forEach(p => { p.memberNumber = counter++; }); nextMemberNumber = counter; }
+
+        function resetToDemo() {
+            people = []; relations = []; nextId = 1; nextMemberNumber = 1;
+            const father = createPerson("Bapak Ahmad", "male");
+            const mother = createPerson("Ibu Siti", "female");
+            const child1 = createPerson("Ali", "male", father.id, mother.id);
+            father.childrenIds = [child1.id]; mother.childrenIds = [child1.id];
+            renumberAllMembers(); saveDataToStorage(); renderTree();
+        }
+
+        function buildForest() {
+            const nodeMap = new Map(); const roots = [];
+            people.forEach(p => { nodeMap.set(p.id, { person: p, children: [] }); });
+            people.forEach(p => {
+                if (p.fatherId !== null) {
+                    const f = nodeMap.get(p.fatherId); if (f) f.children.push(p.id);
+                } else if (p.motherId !== null) {
+                    const m = nodeMap.get(p.motherId); if (m) m.children.push(p.id);
+                }
+            });
+            const isChild = new Set();
+            for (let node of nodeMap.values()) { for (let cid of node.children) isChild.add(cid); }
+            for (let person of people) { if (!isChild.has(person.id)) roots.push(person.id); }
+            return { nodeMap, roots };
+        }
+
+        function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m])); }
+
+        function renderTree() {
+            const container = document.getElementById('familyTree');
+            if (!people.length) {
+                container.innerHTML = `<div class="empty-state"><h2>🌱 Kosong</h2><button onclick="window.resetToDemo()">Muat Contoh</button></div>`;
+                return;
+            }
+            const { nodeMap, roots } = buildForest();
+
+            function renderNode(personId, visited = new Set()) {
+                if (visited.has(personId)) return ''; visited.add(personId);
+                const person = getPersonById(personId); if (!person) return '';
+                const childrenIds = nodeMap.get(personId)?.children || [];
+                const liClass = (person.fatherId || person.motherId) ? 'tree-node-item has-parent-line' : 'tree-node-item';
+
+                let html = `<li data-person-id="${person.id}" class="${liClass}">
+                                            <a href="#" onclick="return false;">
+                                                <span class="member-number">${person.memberNumber}</span>
+                                                <i>${person.gender === 'male' ? '👨' : '👩'}</i> ${escapeHtml(person.name)}
+                                            </a>`;
+                if (showButtons) {
+                    html += `<div class="action-buttons">
+                                                <button onclick="window.openEditModal(${person.id})">✏️</button>
+                                                <button class="delete" onclick="window.deletePerson(${person.id})">🗑️</button>
+                                            </div>`;
+                }
+                if (childrenIds.length) {
+                    html += `<ul>`;
+                    for (let cid of childrenIds) html += renderNode(cid, visited);
+                    html += `</ul>`;
+                }
+                html += `</li>`;
+                return html;
+            }
+
+            let forestHtml = `<ul class="forest-root">`;
+            for (let rid of roots) forestHtml += renderNode(rid);
+            forestHtml += `</ul>`;
+            container.innerHTML = forestHtml;
+            updateModalSelects(); applyZoom(); drawRelations(); attachInteractiveAnimations();
+        }
+
+        function attachInteractiveAnimations() {
+            const treeRoot = document.getElementById('familyTree');
+            document.querySelectorAll('.tree li a').forEach(node => {
+                node.addEventListener('mouseenter', (e) => {
+                    treeRoot.classList.add('highlight-active');
+                    glowAncestors(e.target.closest('li'));
+                });
+                node.addEventListener('mouseleave', () => {
+                    treeRoot.classList.remove('highlight-active');
+                    document.querySelectorAll('.tree li, .tree ul').forEach(el => el.classList.remove('node-active', 'line-highlight'));
+                });
+            });
+        }
+
+        function glowAncestors(liEl) {
+            if (!liEl) return; liEl.classList.add('node-active', 'line-highlight');
+            const parentUl = liEl.parentElement;
+            if (parentUl) { parentUl.classList.add('line-highlight'); const pLi = parentUl.closest('li'); if (pLi) glowAncestors(pLi); }
+        }
+
+        function drawRelations() {
+            const svgLayer = document.getElementById('relationSvgLayer');
+            const relativeWrap = document.getElementById('treeRelativeContainer');
+            if (!svgLayer || !people.length) return;
+            const containerRect = relativeWrap.getBoundingClientRect();
+            const coordMap = new Map();
+
+            document.querySelectorAll('.tree-node-item').forEach(el => {
+                const pid = parseInt(el.getAttribute('data-person-id'));
+                const link = el.querySelector('a');
+                if (link) {
+                    const rect = link.getBoundingClientRect();
+                    coordMap.set(pid, { x: rect.left + rect.width / 2 - containerRect.left, y: rect.top + rect.height / 2 - containerRect.top });
+                }
+            });
+
+            let strokeOpacity = isTransparent ? 0.3 : 1;
+            let textOpacity = isTransparent ? 0.5 : 1;
+            let svgContent = `<svg width="100%" height="100%" style="position: absolute; top:0; left:0;">`;
+
+            for (let person of people) {
+                if (person.motherId && person.fatherId) {
+                    const cc = coordMap.get(person.id); const mc = coordMap.get(person.motherId);
+                    if (cc && mc) {
+                        let midX = (cc.x + mc.x) / 2; let midY = (cc.y + mc.y) / 2 - 15;
+                        svgContent += `<path d="M ${cc.x} ${cc.y} Q ${midX} ${midY} ${mc.x} ${mc.y}" class="relation-line" fill="none" stroke="${relationLineColor}" stroke-opacity="${strokeOpacity}" stroke-width="3" stroke-dasharray="6 4" />`;
+                    }
+                }
+            }
+
+            for (let rel of relations) {
+                const fc = coordMap.get(rel.fromId); const tc = coordMap.get(rel.toId);
+                if (fc && tc) {
+                    let bend = parseInt(rel.curvature || 40);
+                    let midX = (fc.x + tc.x) / 2 + bend; let midY = (fc.y + tc.y) / 2 - Math.abs(bend) / 3;
+                    svgContent += `<path d="M ${fc.x} ${fc.y} Q ${midX} ${midY} ${tc.x} ${tc.y}" class="relation-line" fill="none" stroke="${relationLineColor}" stroke-opacity="${strokeOpacity}" stroke-width="3.5" stroke-dasharray="7 5" />`;
+                    if (rel.label) svgContent += `<text x="${midX}" y="${midY - 8}" text-anchor="middle" font-size="11" fill="${relationLineColor}" fill-opacity="${textOpacity}" font-weight="bold">${escapeHtml(rel.label)}</text>`;
+                }
+            }
+            svgContent += `</svg>`; svgLayer.innerHTML = svgContent;
+        }
+
+        function openColorModal() { document.getElementById('colorModal').style.display = 'flex'; }
+        function closeColorModal() { document.getElementById('colorModal').style.display = 'none'; }
+        function applyRelationColor() {
+            relationLineColor = document.getElementById('relationColorPicker').value;
+            isTransparent = document.getElementById('transparentCheckbox').checked;
+            saveDataToStorage(); drawRelations(); closeColorModal();
+        }
+        function resetRelationColor() { relationLineColor = "#2e7d64"; isTransparent = false; drawRelations(); closeColorModal(); }
+
+        function addMemberWithParents() {
+            const name = document.getElementById('modalNameInput').value.trim();
+            const gender = document.getElementById('modalGenderSelect').value;
+            const fatherId = parseInt(document.getElementById('modalFatherSelect').value) || null;
+            const motherId = parseInt(document.getElementById('modalMotherSelect').value) || null;
+            if (!name) return;
+            const newPerson = createPerson(name, gender, fatherId, motherId);
+            if (fatherId) getPersonById(fatherId)?.childrenIds.push(newPerson.id);
+            if (motherId) getPersonById(motherId)?.childrenIds.push(newPerson.id);
+            people.push(newPerson); renumberAllMembers(); saveDataToStorage(); closeAddMemberModal(); renderTree();
+        }
+
+        function deletePerson(id) {
+            if (confirm(`Hapus Anggota?`)) {
+                people = people.filter(p => p.id !== id); relations = relations.filter(r => r.fromId !== id && r.toId !== id);
+                renumberAllMembers(); saveDataToStorage(); renderTree();
+            }
+        }
+
+        function openEditModal(id) {
+            pendingEditId = id; const p = getPersonById(id);
+            if (p) { document.getElementById('editNameInput').value = p.name; document.getElementById('editModal').style.display = 'flex'; }
+        }
+        function saveEdit() {
+            const person = getPersonById(pendingEditId);
+            if (person) { person.name = document.getElementById('editNameInput').value; person.gender = document.getElementById('editGenderSelect').value; saveDataToStorage(); renderTree(); }
+            closeEditModal();
+        }
+
+        function updateModalSelects() {
+            let opts = '<option value="">-- Pilih --</option>';
+            people.forEach(p => { opts += `<option value="${p.id}">#${p.memberNumber} ${p.name}</option>`; });
+            document.getElementById('modalFatherSelect').innerHTML = opts;
+            document.getElementById('modalMotherSelect').innerHTML = opts;
+            document.getElementById('relationMember1Select').innerHTML = opts;
+            document.getElementById('relationMember2Select').innerHTML = opts;
+        }
+
+        function openRelationModal() { document.getElementById('relationModal').style.display = 'flex'; }
+        function closeRelationModal() { document.getElementById('relationModal').style.display = 'none'; }
+        function saveRelation() {
+            const fromId = parseInt(document.getElementById('relationMember1Select').value);
+            const toId = parseInt(document.getElementById('relationMember2Select').value);
+            const label = document.getElementById('relationLabelInput').value.trim();
+            const curvature = parseInt(document.getElementById('relationCurvatureInput').value) || 0;
+            if (fromId && toId && fromId !== toId) { relations.push({ fromId, toId, label, curvature }); saveDataToStorage(); closeRelationModal(); drawRelations(); }
+        }
+        function openDeleteRelationModal() {
+            const container = document.getElementById('relationListContainer');
+            let html = '';
+            relations.forEach((rel, idx) => { html += `<div class="relation-item"><span>🔗 Relasi ${idx + 1}</span><button onclick="window.deleteSingleRelation(${idx})">Hapus</button></div>`; });
+            container.innerHTML = html || '<div style="padding:20px">Kosong</div>';
+            document.getElementById('deleteRelationModal').style.display = 'flex';
+        }
+        function deleteSingleRelation(idx) { relations.splice(idx, 1); saveDataToStorage(); openDeleteRelationModal(); drawRelations(); }
+        function closeDeleteRelationModal() { document.getElementById('deleteRelationModal').style.display = 'none'; }
+
+        function toggleActionButtons() { showButtons = document.getElementById('showButtonsCheckbox').checked; renderTree(); }
+        function applyZoom() { const treeEl = document.querySelector('.tree'); if (treeEl) treeEl.style.transform = `scale(${currentZoom})`; setTimeout(drawRelations, 30); }
+        function zoomIn() { currentZoom = Math.min(currentZoom + 0.1, 2.5); applyZoom(); }
+        function zoomOut() { currentZoom = Math.max(currentZoom - 0.1, 0.4); applyZoom(); }
+        function resetZoom() { currentZoom = 1; applyZoom(); }
+
+        function openPrintFramingMode() {
+            document.getElementById('printConfigHeader').style.display = 'block';
+            document.getElementById('floatingControls').classList.add('hidden');
+            document.getElementById('toggleControlsBtn').style.display = 'none';
+            document.querySelector('.fab-add').style.display = 'none';
+            document.getElementById('printFrameElement').style.display = 'block';
+            resizePrintFrame();
+        }
+
+        function resizePrintFrame() {
+            document.getElementById('printFrameElement').style.width = document.getElementById('fWidth').value + "px";
+            document.getElementById('printFrameElement').style.height = document.getElementById('fHeight').value + "px";
+        }
+
+        function closePrintMode() {
+            document.getElementById('printConfigHeader').style.display = 'none';
+            document.getElementById('printFrameElement').style.display = 'none';
+            document.getElementById('floatingControls').classList.remove('hidden');
+            document.getElementById('toggleControlsBtn').style.display = 'block';
+            document.querySelector('.fab-add').style.display = 'block';
+        }
+
+        function handleFrameUpload(event) {
+            const file = event.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const key = 'uploaded-' + Date.now(); uploadedFrames[key] = e.target.result;
+                const opt = document.createElement('option'); opt.value = key; opt.textContent = file.name;
+                document.getElementById('frameTemplateSelect').appendChild(opt);
+                document.getElementById('frameTemplateSelect').value = key; changeFrameTemplate();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function changeFrameTemplate() {
+            const val = document.getElementById('frameTemplateSelect').value;
+            const frame = document.getElementById('printFrameElement');
+            frame.style.backgroundImage = 'none'; frame.style.border = '4px dashed #dc6b5a';
+            if (val === 'none') frame.style.border = '2px dashed #888';
+            else if (val === 'default-border') frame.style.border = '12px double #236e8f';
+            else if (uploadedFrames[val]) { frame.style.border = 'none'; frame.style.backgroundImage = `url('${uploadedFrames[val]}')`; }
+        }
+
+        // ========================================================
+        // UPDATE UTAMA: ENGINE DOWNLOAD BERDASARKAN SELEKSI FORMAT
+        // ========================================================
+        function executeAreaDownload() {
+            const format = document.getElementById('downloadFormatSelect').value;
+            const frame = document.getElementById('printFrameElement');
+            const title = document.getElementById('printFrameTitle');
+            const selectValue = document.getElementById('frameTemplateSelect').value;
+
+            // Sembunyikan indikator UI visual agar tidak ikut terpotret
+            title.style.display = 'none';
+            if (selectValue === 'none') frame.style.border = 'none';
+
+            // Ambil screenshot area potongan kertas menggunakan html2canvas
+            html2canvas(document.getElementById('treeRelativeContainer'), {
+                x: frame.offsetLeft,
+                y: frame.offsetTop,
+                width: frame.offsetWidth,
+                height: frame.offsetHeight,
+                scale: 2, // Resolusi tinggi (Retina/HD Quality)
+                useCORS: true,
+                backgroundColor: document.body.classList.contains('dark-mode') ? '#0f1a1f' : '#eef2f7'
+            }).then(canvas => {
+                // Kembalikan UI visual pembatas setelah proses penangkapan selesai
+                title.style.display = 'block';
+                changeFrameTemplate();
+
+                const imgData = canvas.toDataURL(format === 'png' ? 'image/png' : 'image/jpeg', 0.95);
+
+                // 1. OPSI EKSPOR FORMAT GAMBAR (PNG, JPG, JPEG)
+                if (['png', 'jpg', 'jpeg'].includes(format)) {
+                    const link = document.createElement('a');
+                    link.download = `family_tree_export.${format}`;
+                    link.href = imgData;
+                    link.click();
+                }
+                // 2. OPSI EKSPOR FORMAT PDF
+                else if (format === 'pdf') {
+                    const { jsPDF } = window.jspdf;
+                    const orientation = frame.offsetWidth > frame.offsetHeight ? 'l' : 'p';
+                    const pdf = new jsPDF(orientation, 'px', [frame.offsetWidth, frame.offsetHeight]);
+                    pdf.addImage(imgData, 'JPEG', 0, 0, frame.offsetWidth, frame.offsetHeight);
+                    pdf.save('family_tree_export.pdf');
+                }
+                // 3. OPSI EKSPOR FORMAT SVG (Vektor Container)
+                else if (format === 'svg') {
+                    const svgString = `<svg xmlns="http://www.w3.org/2000/svg" width="${frame.offsetWidth}" height="${frame.offsetHeight}">
+                                                <image href="${imgData}" width="${frame.offsetWidth}" height="${frame.offsetHeight}"/>
+                                            </svg>`;
+                    const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.download = 'family_tree_export.svg'; link.href = url; link.click();
+                    URL.revokeObjectURL(url);
+                }
+                // 4. OPSI EKSPOR FORMAT DOKUMEN WORD (DOC, DOCX)
+                else if (['doc', 'docx'].includes(format)) {
+                    const htmlContent = `
+                                                <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+                                                <head><title>Export Family Tree</title>
+                                                <style>@page { size: ${frame.offsetWidth}px ${frame.offsetHeight}px; margin: 0.5cm; }</style>
+                                                </head>
+                                                <body>
+                                                    <div style="text-align:center;"><img src="${imgData}" width="${frame.offsetWidth}" height="${frame.offsetHeight}" /></div>
+                                                </body>
+                                                </html>`;
+                    const blob = new Blob(['\ufeff' + htmlContent], { type: 'application/msword' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.download = `family_tree_export.${format}`; link.href = url; link.click();
+                    URL.revokeObjectURL(url);
+                }
+            }).catch(err => {
+                console.error(err);
+                title.style.display = 'block'; changeFrameTemplate();
+                alert("Gagal memproses ekspor area cetak.");
+            });
+        }
+
+        function toggleDarkMode() { document.body.classList.toggle('dark-mode'); setTimeout(drawRelations, 40); }
+        function toggleFloatingControls() { controlsVisible = !controlsVisible; document.getElementById('floatingControls').classList.toggle('hidden'); }
+        function closeAddMemberModal() { document.getElementById('addMemberModal').style.display = 'none'; }
+        function closeEditModal() { document.getElementById('editModal').style.display = 'none'; }
+
+        const dragContainer = document.getElementById('dragContainer');
+        let isDragging = false, startX, startY, scrollLeft, scrollTop;
+        dragContainer.addEventListener('mousedown', (e) => { if (e.target.closest('button,input,select,label')) return; isDragging = true; startX = e.pageX - dragContainer.offsetLeft; startY = e.pageY - dragContainer.offsetTop; scrollLeft = dragContainer.scrollLeft; scrollTop = dragContainer.scrollTop; });
+        window.addEventListener('mousemove', (e) => { if (!isDragging) return; dragContainer.scrollLeft = scrollLeft - ((e.pageX - dragContainer.offsetLeft - startX) * 1.2); dragContainer.scrollTop = scrollTop - ((e.pageY - dragContainer.offsetTop - startY) * 1.2); });
+        window.addEventListener('mouseup', () => { isDragging = false; });
+
+        if (loadDataFromStorage() && people.length > 0) renderTree(); else resetToDemo();
+
+        window.openAddMemberModal = () => { updateModalSelects(); document.getElementById('addMemberModal').style.display = 'flex'; };
+        window.openEditModal = openEditModal; window.saveEdit = saveEdit; window.deletePerson = deletePerson;
+        window.toggleActionButtons = toggleActionButtons; window.toggleFloatingControls = toggleFloatingControls; window.zoomIn = zoomIn; window.zoomOut = zoomOut; window.resetZoom = resetZoom; window.toggleDarkMode = toggleDarkMode; window.openRelationModal = openRelationModal; window.closeRelationModal = closeRelationModal; window.saveRelation = saveRelation; window.openDeleteRelationModal = openDeleteRelationModal; window.deleteSingleRelation = deleteSingleRelation; window.addMemberWithParents = addMemberWithParents; window.closeAddMemberModal = closeAddMemberModal; window.closeEditModal = closeEditModal; window.resetToDemo = resetToDemo;
+        window.openColorModal = openColorModal; window.closeColorModal = closeColorModal; window.applyRelationColor = applyRelationColor; window.resetRelationColor = resetRelationColor;
+        window.openJsonModal = openJsonModal; window.closeJsonModal = closeJsonModal; window.exportJson = exportJson; window.importJson = importJson; window.copyJson = copyJson; window.clearAllData = clearAllData;
+    </script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const trigger = document.querySelector(".yusuf-trigger");
+            const body = document.body;
+
+            // --------------------------------------------------
+            // 1. ENGINE DAUN JATUH REALISTIS
+            // --------------------------------------------------
+            const leafCanvas = document.getElementById("leaf-canvas");
+            const leafCtx = leafCanvas.getContext("2d");
+            let leaves = [];
+            let isStorming = false;
+
+            function resizeLeafCanvas() {
+                leafCanvas.width = window.innerWidth;
+                leafCanvas.height = window.innerHeight;
+            }
+            window.addEventListener("resize", resizeLeafCanvas);
+            resizeLeafCanvas();
+
+            class Leaf {
+                constructor() {
+                    this.reset();
+                    this.y = Math.random() * -leafCanvas.height;
+                }
+                reset() {
+                    this.x = Math.random() * leafCanvas.width;
+                    this.y = -40;
+                    this.size = 12 + Math.random() * 15;
+                    this.speedY = 1.5 + Math.random() * 2.5;
+                    this.speedX = (Math.random() - 0.5) * 1.5;
+                    this.angle = Math.random() * 360;
+                    this.spinSpeed = (Math.random() - 0.5) * 4;
+                    this.swing = Math.random() * 2;
+                    this.swingSpeed = 0.02 + Math.random() * 0.03;
+                    this.swingTime = Math.random() * 100;
+                    const hues = [95, 120, 135, 145, 70];
+                    this.hue = hues[Math.floor(Math.random() * hues.length)];
+                    this.sat = 70 + Math.floor(Math.random() * 30);
+                    this.light = 30 + Math.floor(Math.random() * 20);
+                }
+                update() {
+                    this.y += this.speedY;
+                    this.swingTime += this.swingSpeed;
+                    this.x += this.speedX + Math.sin(this.swingTime) * this.swing;
+                    this.angle += this.spinSpeed;
+                    if (this.y > leafCanvas.height + 40) this.reset();
+                }
+                draw() {
+                    leafCtx.save();
+                    leafCtx.translate(this.x, this.y);
+                    leafCtx.rotate(this.angle * Math.PI / 180);
+                    leafCtx.scale(Math.sin(this.swingTime), 1);
+                    let grad = leafCtx.createLinearGradient(-this.size, 0, this.size, 0);
+                    grad.addColorStop(0, `hsl(${this.hue}, ${this.sat}%, ${this.light}%)`);
+                    grad.addColorStop(1, `hsl(${this.hue - 15}, ${this.sat}%, ${this.light - 10}%)`);
+                    leafCtx.fillStyle = grad;
+                    leafCtx.beginPath();
+                    leafCtx.moveTo(0, -this.size * 1.5);
+                    leafCtx.quadraticCurveTo(this.size, -this.size * 0.5, 0, this.size * 1.5);
+                    leafCtx.quadraticCurveTo(-this.size, -this.size * 0.5, 0, -this.size * 1.5);
+                    leafCtx.fill();
+                    leafCtx.beginPath();
+                    leafCtx.moveTo(0, -this.size * 1.5);
+                    leafCtx.lineTo(0, this.size * 1.5);
+                    leafCtx.strokeStyle = `rgba(255,255,255,0.3)`;
+                    leafCtx.lineWidth = 1.5;
+                    leafCtx.stroke();
+                    leafCtx.restore();
+                }
+            }
+
+            function initLeaves() {
+                leaves = [];
+                for (let i = 0; i < 60; i++) leaves.push(new Leaf());
+            }
+
+            function animateLeaves() {
+                if (!isStorming) {
+                    leafCtx.clearRect(0, 0, leafCanvas.width, leafCanvas.height);
+                    return;
+                }
+                leafCtx.clearRect(0, 0, leafCanvas.width, leafCanvas.height);
+                leaves.forEach(leaf => { leaf.update(); leaf.draw(); });
+                requestAnimationFrame(animateLeaves);
+            }
+
+            // --------------------------------------------------
+            // 2. ENGINE MULTI-STICKMAN SALAMAN & MULTIPLY
+            // --------------------------------------------------
+            const stickCanvas = document.getElementById("stickman-canvas");
+            const stickCtx = stickCanvas.getContext("2d");
+            let stickmen = [];
+            let stickmanCount = 2;
+            const colors = ["#ff3333", "#3399ff", "#ffcc00", "#ff66cc", "#00ffcc", "#ffffff", "#a370f7"];
+
+            function resizeStickCanvas() {
+                stickCanvas.width = stickCanvas.parentElement.clientWidth;
+                stickCanvas.height = stickCanvas.parentElement.clientHeight;
+            }
+            window.addEventListener("resize", resizeStickCanvas);
+            resizeStickCanvas();
+
+            function spawnStickmen(count) {
+                stickmen = [];
+                let midX = stickCanvas.width / 2;
+
+                for (let i = 0; i < count; i++) {
+                    let dir = (i % 2 === 0) ? 1 : -1;
+                    let startX = (dir === 1) ? -50 - (i * 40) : stickCanvas.width + 50 + (i * 40);
+                    let meetX = midX + (Math.random() - 0.5) * 120;
+
+                    stickmen.push({
+                        id: i,
+                        x: startX,
+                        dir: dir,
+                        color: colors[i % colors.length],
+                        state: "walk",
+                        frame: Math.random() * 10,
+                        meetX: meetX,
+                        handshakeTimer: 0,
+                        speed: 1.8 + Math.random() * 0.6
+                    });
+                }
+            }
+
+            function updateAndDrawStickmen() {
+                if (!isStorming) return;
+                stickCtx.clearRect(0, 0, stickCanvas.width, stickCanvas.height);
+                const ground = stickCanvas.height - 5;
+                let allLeft = true;
+
+                stickmen.forEach(p => {
+                    p.frame += 0.15;
+                    let hY = ground - 45; // Tinggi kepala disesuaikan agar proporsional dengan tinggi arena baru
+
+                    if (p.state === "walk") {
+                        p.x += p.dir * p.speed;
+                        if ((p.dir === 1 && p.x >= p.meetX) || (p.dir === -1 && p.x <= p.meetX)) {
+                            p.state = "handshake";
+                            p.handshakeTimer = 90;
+                        }
+                        allLeft = false;
+                    }
+                    else if (p.state === "handshake") {
+                        p.handshakeTimer--;
+                        if (p.handshakeTimer <= 0) {
+                            p.state = "leave";
+                        }
+                        allLeft = false;
+                    }
+                    else if (p.state === "leave") {
+                        p.x += p.dir * p.speed;
+                        if ((p.dir === 1 && p.x < stickCanvas.width + 100) || (p.dir === -1 && p.x > -100)) {
+                            allLeft = false;
+                        }
+                    }
+
+                    stickCtx.strokeStyle = p.color;
+                    stickCtx.lineWidth = 4;
+                    stickCtx.lineCap = "round";
+
+                    // Torso
+                    stickCtx.beginPath();
+                    stickCtx.moveTo(p.x, hY);
+                    stickCtx.lineTo(p.x, hY + 20);
+                    stickCtx.stroke();
+
+                    // Kepala
+                    stickCtx.beginPath();
+                    stickCtx.arc(p.x, hY - 7, 6, 0, Math.PI * 2);
+                    stickCtx.fillStyle = p.color;
+                    stickCtx.fill();
+
+                    // Kaki
+                    let legAnim = Math.sin(p.frame) * 12;
+                    stickCtx.beginPath();
+                    if (p.state === "walk" || p.state === "leave") {
+                        stickCtx.moveTo(p.x, hY + 20); stickCtx.lineTo(p.x + legAnim, ground);
+                        stickCtx.moveTo(p.x, hY + 20); stickCtx.lineTo(p.x - legAnim, ground);
+                    } else {
+                        stickCtx.moveTo(p.x, hY + 20); stickCtx.lineTo(p.x - 4, ground);
+                        stickCtx.moveTo(p.x, hY + 20); stickCtx.lineTo(p.x + 4, ground);
+                    }
+                    stickCtx.stroke();
+
+                    // Tangan Belakang
+                    stickCtx.beginPath();
+                    stickCtx.moveTo(p.x, hY + 8);
+                    stickCtx.lineTo(p.x - p.dir * 10, hY + 22);
+                    stickCtx.stroke();
+
+                    // Tangan Depan (Salaman)
+                    stickCtx.beginPath();
+                    stickCtx.moveTo(p.x, hY + 8);
+                    if (p.state === "handshake") {
+                        let shakeY = Math.sin(p.frame * 2) * 4;
+                        stickCtx.lineTo(p.x + p.dir * 16, hY + 12 + shakeY);
+                    } else {
+                        let armSwing = Math.sin(p.frame) * 8;
+                        stickCtx.lineTo(p.x + p.dir * 10 + armSwing, hY + 20);
+                    }
+                    stickCtx.stroke();
+                });
+
+                if (allLeft && stickmen.length > 0) {
+                    stickmanCount += 2;
+                    spawnStickmen(stickmanCount);
+                }
+
+                requestAnimationFrame(updateAndDrawStickmen);
+            }
+
+            // --------------------------------------------------
+            // HOVER CONTROLLER
+            // --------------------------------------------------
+            trigger.addEventListener("mouseenter", () => {
+                isStorming = true;
+                body.classList.add("yusuf-active");
+                leafCanvas.classList.add("active");
+
+                stickmanCount = 2;
+                spawnStickmen(stickmanCount);
+
+                initLeaves();
+                animateLeaves();
+                updateAndDrawStickmen();
+            });
+
+            trigger.addEventListener("mouseleave", () => {
+                isStorming = false;
+                body.classList.remove("yusuf-active");
+                leafCanvas.classList.remove("active");
+
+                leafCtx.clearRect(0, 0, leafCanvas.width, leafCanvas.height);
+                stickCtx.clearRect(0, 0, stickCanvas.width, stickCanvas.height);
+                leaves = [];
+                stickmen = [];
+            });
+        });
+    </script>
+
+    <script>
+        const modal = document.getElementById("donateModal");
+        const openBtn = document.getElementById("openDonateBtn");
+        const closeBtn = document.getElementById("closeDonateBtn");
+        const reloadBtn = document.getElementById("reloadPageBtn");
+
+        const moneyRainContainer = document.getElementById("moneyRainContainer");
+        const skyScene = document.getElementById("skyScene");
+        const canvas = document.getElementById("rainbowCanvas");
+        const ctx = canvas.getContext("2d");
+
+        let rainInterval;
+        let animationFrameId;
+
+        // Variabel Kendali Animasi
+        let t = 0;
+        let stickmanDirection = 1; // 1 = Meluncur Turun, -1 = Memanjat Naik, 0 = Diam Sejenak
+        let blinkAlpha = 0.65;
+        let blinkDirection = 0.008; // Transisi kedap-kedip diperhalus pelan
+
+        function getBezierPoint(t, p0, p1, p2) {
+            const x = (1 - t) * (1 - t) * p0.x + 2 * (1 - t) * t * p1.x + t * t * p2.x;
+            const y = (1 - t) * (1 - t) * p0.y + 2 * (1 - t) * t * p1.y + t * t * p2.y;
+            return { x, y };
+        }
+
+        // Menggambar 4 Warna Pelangi Utama Pilihanmu (Merah, Kuning, Hijau, Biru)
+        function drawRainbow(p0, p1, p2) {
+            const customColors = [
+                "rgba(255, 50, 50, ",   // Merah
+                "rgba(255, 235, 50, ",  // Kuning
+                "rgba(50, 215, 50, ",   // Hijau
+                "rgba(50, 130, 255, "   // Biru
+            ];
+
+            ctx.save();
+            // Beri efek blur alami agar antar warna membaur natural
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = "rgba(255,255,255,0.4)";
+
+            customColors.forEach((color, index) => {
+                ctx.beginPath();
+                ctx.moveTo(p0.x, p0.y);
+                ctx.quadraticCurveTo(p1.x, p1.y, p2.x, p2.y);
+                ctx.strokeStyle = color + blinkAlpha + ")";
+                ctx.lineWidth = 36 - (index * 5); // Ketebalan layer yang proporsional
+                ctx.lineCap = "round";
+                ctx.stroke();
+            });
+            ctx.restore();
+        }
+
+        // Desain Anatomi Stickman Alami & Proporsional
+        function drawStickman(pos, t, dir) {
+            ctx.save();
+            ctx.translate(pos.x, pos.y - 18);
+            ctx.strokeStyle = "#2d3748"; // Warna abu gelap natural
+            ctx.lineWidth = 3;
+            ctx.lineCap = "round";
+
+            let frame = Math.floor(Date.now() / 150) % 4; // Ritme gerakan kaki/tangan lebih lambat
+
+            // KEPALA
+            ctx.beginPath();
+            ctx.arc(0, -18, 5, 0, Math.PI * 2);
+            ctx.fillStyle = "#2d3748";
+            ctx.fill();
+            ctx.stroke();
+
+            // BADAN
+            ctx.beginPath();
+            ctx.moveTo(0, -13);
+            ctx.lineTo(0, 0);
+            ctx.stroke();
+
+            if (dir === 1) { // --- PERJALANAN TURUN ---
+                if (t > 0.15 && t < 0.85) {
+                    // Pose Meluncur (Sliding) Alami
+                    ctx.rotate(-0.25); // Condong rileks ke belakang
+                    // Posisi Kaki selonjoran santai mengikuti arus luncuran
+                    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(10, 4); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(7, 9); ctx.stroke();
+                    // Tangan diangkat ke atas menikmati seluncuran pelangi
+                    ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(-8, -18); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(8, -16); ctx.stroke();
+                } else {
+                    // Pose Jalan Kaki Normal waktu keluar dari awan / mendarat
+                    let legCycle = frame % 2 === 0 ? 8 : 3;
+                    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-5, 10); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(5, legCycle); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(-4, -2); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(4, -4); ctx.stroke();
+                }
+            } else { // --- PROSES MEMANJAT NAIK (Dibuat Lambat & Natural) ---
+                ctx.rotate(0.18); // Sedikit merunduk maju ke depan menahan beban tanjakan
+                let climbCycle = frame % 2 === 0;
+                // Langkah kaki memanjat secara bergiliran
+                ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-6, climbCycle ? 10 : 5); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(4, climbCycle ? 4 : 10); ctx.stroke();
+                // Tangan menggapai ke depan menarik tubuh naik ke atas pelangi
+                ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(-10, -6); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(5, -1); ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+
+        // Loop Animasi
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+
+            const btnRect = openBtn.getBoundingClientRect();
+
+            const p0 = { x: 110, y: 75 };
+            const p2 = { x: btnRect.left + (btnRect.width / 2), y: btnRect.top };
+            const p1 = { x: (p0.x + p2.x) / 1.9, y: -130 };
+
+            // Efek Kedap Kedip Natural
+            blinkAlpha += blinkDirection;
+            if (blinkAlpha >= 0.8 || blinkAlpha <= 0.45) blinkDirection = -blinkDirection;
+
+            drawRainbow(p0, p1, p2);
+
+            // Pengaturan Kecepatan Durasi (Dibuat jauh lebih pelan agar natural)
+            if (stickmanDirection === 1) {
+                t += 0.0025; // Kecepatan meluncur turun diperlambat setengahnya
+                if (t >= 1) {
+                    t = 1;
+                    stickmanDirection = 0;
+                    setTimeout(() => { stickmanDirection = -1; }, 1200); // Istirahat sejenak di atas tombol
+                }
+            } else if (stickmanDirection === -1) {
+                t -= 0.0018; // Kecepatan memanjat naik dibuat sangat tenang dan realistis
+                if (t <= 0) {
+                    t = 0;
+                    stickmanDirection = 0;
+                    setTimeout(() => { stickmanDirection = 1; }, 600); // Jeda sebelum keluar awan kembali
+                }
+            }
+
+            const currentPos = getBezierPoint(t, p0, p1, p2);
+
+            if (stickmanDirection !== 0 || t > 0) {
+                drawStickman(currentPos, t, stickmanDirection === 0 ? -1 : stickmanDirection);
+            }
+
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+        // Fungsi Event Klik untuk Reload Halaman
+        reloadBtn.onclick = function () {
+            location.reload();
+        };
+
+        function createMoney() {
+            const paperMoney = ['💵', '💸']; const coins = ['🪙'];
+            const isCoin = Math.random() > 0.5;
+            const item = document.createElement("div");
+            item.classList.add("money-item");
+
+            if (isCoin) {
+                item.innerText = coins[Math.floor(Math.random() * coins.length)];
+                item.classList.add("coin-animation");
+                item.style.fontSize = (Math.random() * 12 + 16) + 'px';
+            } else {
+                item.innerText = paperMoney[Math.floor(Math.random() * paperMoney.length)];
+                item.classList.add("bill-animation");
+                item.style.fontSize = (Math.random() * 16 + 22) + 'px';
+            }
+            item.style.left = Math.random() * 100 + 'vw';
+            item.style.animationDuration = (Math.random() * 1.5 + 2.5) + 's';
+
+            moneyRainContainer.appendChild(item);
+            setTimeout(() => { item.remove(); }, 4000);
+        }
+
+        // HOVER
+        openBtn.addEventListener("mouseenter", () => {
+            skyScene.style.display = "block";
+            moneyRainContainer.style.display = "block";
+            t = 0; stickmanDirection = 1;
+            animate();
+            rainInterval = setInterval(createMoney, 50);
+        });
+
+        openBtn.addEventListener("mouseleave", () => {
+            cancelAnimationFrame(animationFrameId);
+            clearInterval(rainInterval);
+            skyScene.style.display = "none";
+            moneyRainContainer.style.display = "none";
+            moneyRainContainer.innerHTML = '';
+        });
+
+        openBtn.onclick = function () {
+            modal.style.display = "flex";
+            cancelAnimationFrame(animationFrameId);
+            clearInterval(rainInterval);
+            skyScene.style.display = "none";
+            moneyRainContainer.style.display = "none";
+        }
+        closeBtn.onclick = function () { modal.style.display = "none"; }
+        window.onclick = function (event) { if (event.target == modal) { modal.style.display = "none"; } }
+    </script>
+
+</body>
+</html>
