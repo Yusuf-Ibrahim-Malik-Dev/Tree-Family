@@ -1,0 +1,6 @@
+C:\Users\Admin\Desktop\TreeFamily\bin\TreeFamily.dll
+C:\Users\Admin\Desktop\TreeFamily\bin\TreeFamily.pdb
+C:\Users\Admin\Desktop\TreeFamily\obj\Debug\TreeFamily.csproj.AssemblyReference.cache
+C:\Users\Admin\Desktop\TreeFamily\obj\Debug\TreeFamily.csproj.CoreCompileInputs.cache
+C:\Users\Admin\Desktop\TreeFamily\obj\Debug\TreeFamily.dll
+C:\Users\Admin\Desktop\TreeFamily\obj\Debug\TreeFamily.pdb
