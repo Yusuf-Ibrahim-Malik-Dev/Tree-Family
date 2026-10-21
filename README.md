@@ -1,6 +1,6 @@
 # Tree-Family 
 
-Url : https://yusuf-ibrahim-malik-dev.github.io/Tree-Family/
+Url : https://yusuf-ibrahim-malik-dev.github.io/Tree-Family/publish/
 
 Membuat Silsilah Keluarga, 
 Screenshoot Tree:
